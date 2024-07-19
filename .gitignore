@@ -4,3 +4,6 @@ consensus/validatordata
 execution/geth
 execution/geth.ipc
 .idea/
+.env
+.envrc
+keystore

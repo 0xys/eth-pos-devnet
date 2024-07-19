@@ -1,0 +1,81 @@
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: "3"
+      tag: '{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}'
+
+services:
+  keygen:
+    build:
+      context: ./tools/keygen
+      dockerfile: Dockerfile
+    environment:
+      - NUM_VALIDATORS=64
+      - MNEMONIC=${MNEMONIC}
+      - PASSWORD=${PASSWORD}
+      - KEYSTORE_PATH=/var/lib/keygen/keys
+    volumes:
+      - web3signer-keys:/var/lib/keygen/keys
+
+  web3signer:
+    restart: "unless-stopped"
+    build:
+      context: ./web3signer
+      args:
+        - DOCKER_TAG=${W3S_DOCKER_TAG:-latest}
+        - DOCKER_REPO=${W3S_DOCKER_REPO:-consensys/web3signer}
+      dockerfile: Dockerfile.binary
+    image: web3signer:local
+    pull_policy: never
+    user: web3signer
+    volumes:
+      - web3signer-keys:/var/lib/web3signer/keys
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      keygen:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    <<: *logging
+    entrypoint:
+      - docker-entrypoint.sh
+      - /opt/web3signer/bin/web3signer
+      - --key-store-path=/var/lib/web3signer/keys
+      - --metrics-enabled
+      - --metrics-host-allowlist=*
+      - --http-host-allowlist=*
+      - --logging=${LOG_LEVEL:-info}
+      - eth2
+      - --network=${NETWORK}
+      - --enable-key-manager-api=true
+      - --slashing-protection-db-url=jdbc:postgresql://postgres/web3signer
+      - --slashing-protection-db-username=postgres
+      - --slashing-protection-db-password=postgres
+      - --slashing-protection-pruning-enabled=true
+    labels:
+      - metrics.scrape=true
+      - metrics.path=/metrics
+      - metrics.port=9001
+      - metrics.instance=web3signer
+      - metrics.network=${NETWORK}
+
+  postgres:
+    restart: "unless-stopped"
+    image: "postgres:${PG_DOCKER_TAG}"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=web3signer
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      start_period: 5s
+      interval: 10s
+      timeout: 5s
+    volumes:
+      - web3signer-slashing-data:/var/lib/postgresql/data/
+
+volumes:
+  web3signer-keys:
+  web3signer-slashing-data:
