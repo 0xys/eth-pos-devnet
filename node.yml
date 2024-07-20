@@ -139,8 +139,8 @@ services:
       - --force-clear-db
       - --validators-external-signer-url=http://web3signer:9000
       - --validators-external-signer-public-keys=http://web3signer:9000/api/v1/eth2/publicKeys
-      - --enable-beacon-rest-api
-      - --beacon-rest-api-provider=http://beacon-chain:4000
+      # - --enable-beacon-rest-api
+      # - --beacon-rest-api-provider=http://beacon-chain:4000
     depends_on:
       beacon-chain:
         condition: service_started
