@@ -8,13 +8,15 @@ services:
       - testnet
       - generate-genesis
       - --fork=capella
-      - --num-validators=64
+      - --deposit-json-file=/var/lib/deposits/deposits.json
+      - --num-validators=0
       - --genesis-time-delay=15
       - --output-ssz=/consensus/genesis.ssz
       - --chain-config-file=/consensus/config.yml
       - --geth-genesis-json-in=/execution/genesis.json
       - --geth-genesis-json-out=/execution/genesis.json
     volumes:
+      - web3signer-keys:/var/lib/deposits
       - ./consensus:/consensus
       - ./execution:/execution
     depends_on:
@@ -47,6 +49,7 @@ services:
   # The account used in go-ethereum is set as the suggested fee recipient for transactions
   # proposed via the validators attached to the beacon node.
   beacon-chain:
+    container_name: consensus
     image: "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1"
     command:
       - --datadir=/consensus/beacondata
@@ -86,6 +89,7 @@ services:
   # Runs the go-ethereum execution client with the specified, unlocked account and necessary
   # APIs to allow for proof-of-stake consensus via Prysm.
   geth:
+    container_name: execution
     image: "ethereum/client-go:latest"
     command:
       - --http
@@ -122,15 +126,21 @@ services:
   # We run a validator client with 64, deterministically-generated keys that match
   # The validator keys present in the beacon chain genesis state generated a few steps above.
   validator:
+    container_name: validator
+    restart: "unless-stopped"
     image: "gcr.io/prysmaticlabs/prysm/validator:v4.1.1"
     command:
       - --beacon-rpc-provider=beacon-chain:4000
       - --datadir=/consensus/validatordata
       - --accept-terms-of-use
-      - --interop-num-validators=64
-      - --interop-start-index=0
+      # - --interop-num-validators=64
+      # - --interop-start-index=0
       - --chain-config-file=/consensus/config.yml
       - --force-clear-db
+      - --validators-external-signer-url=http://web3signer:9000
+      - --validators-external-signer-public-keys=http://web3signer:9000/api/v1/eth2/publicKeys
+      - --enable-beacon-rest-api
+      - --beacon-rest-api-provider=http://beacon-chain:4000
     depends_on:
       beacon-chain:
         condition: service_started

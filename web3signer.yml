@@ -16,10 +16,14 @@ services:
       - MNEMONIC=${MNEMONIC}
       - PASSWORD=${PASSWORD}
       - KEYSTORE_PATH=/var/lib/keygen/keys
+      - WITHDRAWAL_ADDRESS=${WITHDRAWAL_ADDRESS}
+      - GENESIS_FORK_VERSION=${GENESIS_FORK_VERSION}
+      - NETWORK_NAME=${NETWORK_NAME}
     volumes:
       - web3signer-keys:/var/lib/keygen/keys
 
   web3signer:
+    container_name: web3signer
     restart: "unless-stopped"
     build:
       context: ./web3signer
@@ -48,7 +52,7 @@ services:
       - --http-host-allowlist=*
       - --logging=${LOG_LEVEL:-info}
       - eth2
-      - --network=${NETWORK}
+      - --network=${WEB3SIGNER_NETWORK}
       - --enable-key-manager-api=true
       - --slashing-protection-db-url=jdbc:postgresql://postgres/web3signer
       - --slashing-protection-db-username=postgres
