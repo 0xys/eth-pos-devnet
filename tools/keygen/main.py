@@ -84,7 +84,7 @@ if __name__ == '__main__':
         }
 
         # save to yaml
-        with open(f"{location}/key_{pub}.yaml", 'w+') as f:
+        with open(f"{location}/key_{pub}.yaml", 'x') as f:
             for key, value in data.items():
                 f.write(f"{key}: \"{value}\"\n")
 
